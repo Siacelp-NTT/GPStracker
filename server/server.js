@@ -1,10 +1,10 @@
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const cors = require("cors");
-const fetch = require("node-fetch"); // Install with: npm install node-fetch
+const net = require("net");
 
 const app = express();
-const port = 89; // Changed to 89
+const port = 89;
 app.use(express.json());
 app.use(cors());
 
@@ -14,54 +14,115 @@ const db = new sqlite3.Database("./iot-tracking.db", (err) => {
     else console.log("Connected to SQLite database");
 });
 
-// Create Users and Tracking Tables
+// Create Users Table
 db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     password TEXT
 )`);
 
+// Create Tracking Table
 db.run(`CREATE TABLE IF NOT EXISTS tracking (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId INTEGER,
     lat REAL,
     lon REAL,
+    speed REAL,
     timestamp TEXT
 )`);
 
-// Replace with your actual phone IP running GPS2IP
-const PHONE_IP = "192.168.1.100"; // Change this to your phone’s actual IP
-const GPS2IP_PORT = 2222; // GPS2IP default port
+// GPS2IP Socket Connection
+const PHONE_IP = "172.16.132.182"; // Replace with your actual iPhone IP
+const GPS2IP_PORT = 11123; // Make sure this matches your GPS2IP app settings
 
-// Function to fetch GPS data from GPS2IP
-async function getGPSData() {
-    try {
-        const response = await fetch(`http://${PHONE_IP}:${GPS2IP_PORT}/?format=json`);
-        const data = await response.json();
-        if (data && data.lat && data.lon) {
-            return { lat: parseFloat(data.lat), lon: parseFloat(data.lon) };
+const client = new net.Socket();
+client.connect(GPS2IP_PORT, PHONE_IP, () => {
+    console.log("✅ Connected to GPS2IP Socket!");
+});
+
+client.on("data", (data) => {
+    const gpsString = data.toString().trim();
+    console.log("📍 Raw GPS Data:", gpsString);
+
+    if (gpsString.startsWith("$GPRMC")) {
+        const parsedData = parseGPRMC(gpsString);
+        if (parsedData) {
+            console.log("✅ Parsed GPS Data:", parsedData);
+            saveToDatabase(parsedData);
         }
-    } catch (error) {
-        console.error("Error fetching GPS data:", error);
     }
-    return null;
+});
+
+client.on("error", (err) => {
+    console.error("❌ Socket error:", err.message);
+});
+
+client.on("close", () => {
+    console.log("❌ Connection to GPS2IP closed");
+});
+
+// Parse GPS Data from GPRMC format
+function parseGPRMC(sentence) {
+    const parts = sentence.split(",");
+    
+    if (parts.length < 12) return null; // Ensure we have all necessary data
+    
+    const timeUTC = parts[1]; 
+    const status = parts[2]; // "A" means valid, "V" means void
+    const latRaw = parts[3];
+    const latDir = parts[4];
+    const lonRaw = parts[5];
+    const lonDir = parts[6];
+    const speedKnots = parseFloat(parts[7]);
+    const dateRaw = parts[9];
+
+    if (status !== "A") return null; // Skip if data is invalid
+
+    // Convert lat/lon from "DDMM.MMMM" format to decimal degrees
+    const latitude = convertToDecimal(latRaw, latDir);
+    const longitude = convertToDecimal(lonRaw, lonDir);
+
+    // Convert speed from knots to km/h
+    const speedKmh = speedKnots * 1.852;
+
+    // Format UTC time and date
+    const formattedTime = `${timeUTC.slice(0, 2)}:${timeUTC.slice(2, 4)}:${timeUTC.slice(4, 6)} UTC`;
+    const formattedDate = `20${dateRaw.slice(4, 6)}-${dateRaw.slice(2, 4)}-${dateRaw.slice(0, 2)}`;
+
+    return {
+        time: formattedTime,
+        date: formattedDate,
+        latitude: latitude.toFixed(6),
+        longitude: longitude.toFixed(6),
+        speed: speedKmh.toFixed(2)
+    };
 }
 
-// Haversine formula to calculate distance between two GPS points
-function haversine(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of Earth in km
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
+// Convert coordinates to decimal
+function convertToDecimal(raw, direction) {
+    const degrees = parseInt(raw.slice(0, -7), 10);
+    const minutes = parseFloat(raw.slice(-7));
+    let decimal = degrees + (minutes / 60);
+    if (direction === "S" || direction === "W") decimal *= -1;
+    return decimal;
 }
 
-// Register User
+// Store GPS Data in Database
+function saveToDatabase(data) {
+    db.run(
+        `INSERT INTO tracking (userId, lat, lon, speed, timestamp) VALUES (?, ?, ?, ?, datetime('now'))`,
+        [1, data.latitude, data.longitude, data.speed], // Assuming user ID 1 for now
+        (err) => {
+            if (err) console.error("❌ Database Insert Error:", err.message);
+            else console.log("✅ GPS Data saved to database.");
+        }
+    );
+}
+
+// Register User (No Password Hashing)
 app.post("/register", (req, res) => {
     const { username, password } = req.body;
+
     db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, 
         [username, password], 
         (err) => {
@@ -71,59 +132,34 @@ app.post("/register", (req, res) => {
     );
 });
 
-// Login User
+// Login User (No Password Hashing)
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
+
     db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, 
         [username, password], 
         (err, user) => {
-            if (err || !user) return res.status(401).json({ message: "Invalid credentials" });
+            if (err || !user) return res.status(401).json({ message: "Invalid username or password" });
+
             res.json({ message: "Login successful", userId: user.id });
         }
     );
 });
 
-// Store GPS Data
-app.post("/gps", async (req, res) => {
-    const { userId } = req.body; // User ID comes from frontend
-    const gpsData = await getGPSData();
-    
-    if (!gpsData) {
-        return res.status(500).json({ message: "Failed to fetch GPS data from GPS2IP" });
-    }
-
-    const { lat, lon } = gpsData;
-    db.run(
-        `INSERT INTO tracking (userId, lat, lon, timestamp) VALUES (?, ?, ?, datetime('now'))`, 
-        [userId, lat, lon],
-        (err) => {
-            if (err) return res.status(500).json({ message: "Error storing GPS data" });
-            res.json({ message: "GPS data stored", lat, lon });
-        }
-    );
+// Get Latest GPS Data
+app.get("/gps/latest", (req, res) => {
+    db.get(`SELECT * FROM tracking ORDER BY id DESC LIMIT 1`, (err, row) => {
+        if (err || !row) return res.status(500).json({ message: "No GPS data available" });
+        res.json(row);
+    });
 });
 
-// Get Weekly Report for Distance and Calories
-app.get("/report/:userId", (req, res) => {
-    const userId = req.params.userId;
-    db.all(
-        `SELECT * FROM tracking WHERE userId = ? AND timestamp >= date('now', '-7 days')`, 
-        [userId], 
-        (err, rows) => {
-            if (err) return res.status(500).json({ message: "Error fetching report" });
-
-            let totalDistance = 0;
-            for (let i = 1; i < rows.length; i++) {
-                totalDistance += haversine(rows[i - 1].lat, rows[i - 1].lon, rows[i].lat, rows[i].lon);
-            }
-            const caloriesBurned = totalDistance * 60; // Approximate calories burned
-
-            res.json({ totalDistance, caloriesBurned });
-        }
-    );
+// Default Route
+app.get("/", (req, res) => {
+    res.send("🚀 Server is running! Use API endpoints.");
 });
 
 // Start Server
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`🚀 Server running on http://localhost:${port}`);
 });
