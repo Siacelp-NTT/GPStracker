@@ -1,3 +1,2 @@
-# GPStracker
-# Hello
+# GPStracker - First attemp
 
