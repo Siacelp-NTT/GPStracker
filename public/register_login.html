@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .toggle-link {
+            color: #007bff;
+            cursor: pointer;
+            margin-top: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 id="formTitle">Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="handleAuth()">Login</button>
+        <p class="toggle-link" onclick="toggleForm()">Don't have an account? Register here</p>
+    </div>
+
+    <script>
+        let isLogin = true;
+
+        function toggleForm() {
+            isLogin = !isLogin;
+            document.getElementById("formTitle").innerText = isLogin ? "Login" : "Register";
+            document.querySelector("button").innerText = isLogin ? "Login" : "Register";
+            document.querySelector(".toggle-link").innerText = isLogin ? "Don't have an account? Register here" : "Already have an account? Login here";
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const endpoint = isLogin ? "login" : "register";
+            const res = await fetch(`http://172.16.132.204:89/${endpoint}`, {  // Replace with your actual local IP
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await res.json();
+            alert(data.message);
+            if (data.message.includes("successful")) {
+                if (isLogin) window.location.href = "tracking.html";
+                else toggleForm();  // Switch to login after successful registration
+            }
+        }
+    </script>
+</body>
+</html>
