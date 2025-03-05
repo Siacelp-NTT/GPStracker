@@ -7,6 +7,8 @@ const app = express();
 const port = 89;
 app.use(express.json());
 app.use(cors());
+app.use(express.static("public"));
+
 
 // Database Setup
 const db = new sqlite3.Database("./iot-tracking.db", (err) => {
@@ -32,7 +34,7 @@ db.run(`CREATE TABLE IF NOT EXISTS tracking (
 )`);
 
 // GPS2IP Socket Connection
-const PHONE_IP = "172.16.132.182"; // Replace with your actual iPhone IP
+const PHONE_IP = "172.16.133.137"; // Replace with your actual iPhone IP
 const GPS2IP_PORT = 11123; // Make sure this matches your GPS2IP app settings
 
 const client = new net.Socket();
@@ -152,6 +154,25 @@ app.get("/gps/latest", (req, res) => {
         if (err || !row) return res.status(500).json({ message: "No GPS data available" });
         res.json(row);
     });
+});
+
+// Get Weekly Report for a User
+app.get("/weekly-report/:userId", (req, res) => {
+    const { userId } = req.params;
+
+    db.all(
+        `SELECT * FROM tracking 
+         WHERE userId = ? 
+         AND timestamp >= datetime('now', '-7 days') 
+         ORDER BY timestamp ASC`,
+        [userId],
+        (err, rows) => {
+            if (err) {
+                return res.status(500).json({ message: "Error retrieving weekly report" });
+            }
+            res.json({ weeklyReport: rows });
+        }
+    );
 });
 
 // Default Route

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly GPS Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>Weekly GPS Report</h2>
+    <label for="userId">Enter User ID:</label>
+    <input type="number" id="userId" value="1">
+    <button onclick="fetchReport()">Load Report</button>
+
+    <canvas id="gpsChart" width="400" height="200"></canvas>
+
+    <script>
+        async function fetchReport() {
+            const userId = document.getElementById("userId").value;
+            const response = await fetch(`http://localhost:89/weekly-report/${userId}`);
+            const data = await response.json();
+
+            if (!data.weeklyReport || data.weeklyReport.length === 0) {
+                alert("No data found for this user.");
+                return;
+            }
+
+            // Extract data for graph
+            const timestamps = data.weeklyReport.map(entry => entry.timestamp);
+            const speeds = data.weeklyReport.map(entry => entry.speed);
+
+            // Render Chart
+            const ctx = document.getElementById("gpsChart").getContext("2d");
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                        label: "Speed (km/h)",
+                        data: speeds,
+                        borderColor: "blue",
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: "Timestamp" } },
+                        y: { title: { display: true, text: "Speed (km/h)" }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
