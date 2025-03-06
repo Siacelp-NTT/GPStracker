@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+</head>
+<body>
+    <h2>Register</h2>
+    <input type="text" id="username" placeholder="Enter username">
+    <input type="password" id="password" placeholder="Enter password">
+    <button onclick="register()">Register</button>
+    <p id="message"></p>
+    <p>Already have an account? <a href="/login">Login here</a></p>
+
+    
+    <script>
+        async function register() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const response = await fetch("http://localhost:89/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const result = await response.json();
+            document.getElementById("message").innerText = result.message;
+
+            if (result.message === "Registration successful!") {
+                setTimeout(() => {
+                    window.location.href = "/login"; // Redirect to login page
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #status { margin-top: 10px; font-weight: bold; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h2>GPS Tracker Dashboard</h2>
+
+    <label>Phone IP:</label>
+    <input type="text" id="phone-ip" placeholder="Enter phone IP">
+    <label>Port (Optional):</label>
+    <input type="text" id="phone-port" placeholder="Default: 11123">
+    <button onclick="startTracking()">Connect</button>
+
+    <p id="status">Status: Not Connected</p>
+    <p>Connection Time: <span id="time-count">0</span> seconds</p>
+
+    <h3>GPS Data</h3>
+    <p>Latitude: <span id="lat">-</span></p>
+    <p>Longitude: <span id="lon">-</span></p>
+    <p>Total Distance: <span id="distance">0</span> km</p>
+
+    <script>
+        let trackingInterval, connectionTime = 0;
+        let userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
+
+        async function fetchGPSData(ip, port) {
+            try {
+                const url = `http://${ip}:${port || 11123}/?request=live`;
+                const response = await fetch(url);
+                const text = await response.text();
+
+                const gpsMatch = text.match(/Latitude=([-0-9.]+)\s+Longitude=([-0-9.]+)/);
+                if (!gpsMatch) throw new Error("Invalid GPS data format");
+
+                const lat = parseFloat(gpsMatch[1]);
+                const lon = parseFloat(gpsMatch[2]);
+
+                document.getElementById("lat").innerText = lat;
+                document.getElementById("lon").innerText = lon;
+                
+                // Send data to server
+                const serverResponse = await fetch("http://localhost:89/update-location", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId, lat, lon })
+                });
+                const result = await serverResponse.json();
+                
+                document.getElementById("distance").innerText = result.distance.toFixed(3);
+                document.getElementById("status").innerText = "Connected";
+                document.getElementById("status").className = "success";
+
+            } catch (error) {
+                console.error("GPS Fetch Error:", error);
+                document.getElementById("status").innerText = "Connection Failed";
+                document.getElementById("status").className = "error";
+                clearInterval(trackingInterval);
+            }
+        }
+
+        function startTracking() {
+            const ip = document.getElementById("phone-ip").value;
+            const port = document.getElementById("phone-port").value || "11123";
+
+            if (!ip) {
+                alert("Please enter a phone IP");
+                return;
+            }
+
+            connectionTime = 0;
+            document.getElementById("status").innerText = "Connecting...";
+            document.getElementById("status").className = "";
+
+            trackingInterval = setInterval(() => {
+                fetchGPSData(ip, port);
+                document.getElementById("time-count").innerText = ++connectionTime;
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
