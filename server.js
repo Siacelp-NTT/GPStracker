@@ -3,14 +3,15 @@ const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const http = require("http");
 
 const app = express();
 const port = 89;
+const net = require("net");
 
 app.use(express.json());
 app.use(cors());
 app.use(express.static("public"));
-
 
 const db = new sqlite3.Database("./iot-tracking.db", (err) => {
     if (err) {
@@ -53,7 +54,36 @@ db.run(`CREATE TABLE IF NOT EXISTS tracking (
     FOREIGN KEY(userId) REFERENCES users(id)
 )`);
 
-app.post("/dashboard", (req, res) => {
+app.get("/fetch-gps", (req, res) => {
+    const { ip, port } = req.query;
+    const gpsPort = port || 11123; // Use default port if not provided
+
+    console.log(`Connecting to GPS2IP at ${ip}:${gpsPort}`);
+
+    const client = new net.Socket();
+    
+    client.connect(gpsPort, ip, () => {
+        console.log("Connected to GPS2IP, requesting data...");
+        client.write("GET /?request=live\r\n");  // Send request manually
+    });
+
+    client.on("data", (data) => {
+        console.log("Raw GPS Data:", data.toString());
+        res.send(data.toString()); // Send data to the frontend
+        client.destroy(); // Close connection
+    });
+
+    client.on("error", (err) => {
+        console.error("Socket Error:", err.message);
+        res.status(500).json({ error: "Failed to fetch GPS data", details: err.message });
+    });
+
+    client.on("close", () => {
+        console.log("Connection closed.");
+    });
+});
+
+app.post("/update-location", (req, res) => {
     const { userId, lat, lon } = req.body;
 
     if (!userId || !lat || !lon) {
@@ -132,7 +162,7 @@ app.post("/login", (req, res) => {
             const match = await bcrypt.compare(password, user.password);
 
             if (match) {
-                return res.status(200).json({ message: "Login successful" });  
+                return res.status(200).json({ message: "Login successful", userId: user.id });  
             } else {
                 return res.status(200).json({ error: "Invalid credentials" });  
             }
@@ -169,6 +199,6 @@ app.get("/dashboard/:userId", (req, res) => {
     );
 });
 
-app.listen(89, () => {
-    console.log("Server running on http://localhost:89");
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });

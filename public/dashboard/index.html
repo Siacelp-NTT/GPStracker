@@ -34,9 +34,10 @@
 
         async function fetchGPSData(ip, port) {
             try {
-                const url = `http://${ip}:${port || 11123}/?request=live`;
+                const url = `http://localhost:89/fetch-gps?ip=${ip}&port=${port || 11123}`;
                 const response = await fetch(url);
                 const text = await response.text();
+
 
                 const gpsMatch = text.match(/Latitude=([-0-9.]+)\s+Longitude=([-0-9.]+)/);
                 if (!gpsMatch) throw new Error("Invalid GPS data format");
