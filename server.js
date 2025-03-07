@@ -61,21 +61,36 @@ app.get("/fetch-gps", (req, res) => {
     console.log(`Connecting to GPS2IP at ${ip}:${gpsPort}`);
 
     const client = new net.Socket();
-    
+    let responseData = "";
+
+    client.setTimeout(5000); // Set timeout (5 seconds)
+
     client.connect(gpsPort, ip, () => {
         console.log("Connected to GPS2IP, requesting data...");
         client.write("GET /?request=live\r\n");  // Send request manually
     });
 
     client.on("data", (data) => {
-        console.log("Raw GPS Data:", data.toString());
-        res.send(data.toString()); // Send data to the frontend
-        client.destroy(); // Close connection
+        responseData += data.toString();
+        console.log("Received GPS Data:", responseData);
+        client.end(); // Close connection after receiving data
+    });
+
+    client.on("end", () => {
+        console.log("Connection ended. Sending response...");
+        res.send(responseData || '{"error":"No data received"}');
+    });
+
+    client.on("timeout", () => {
+        console.error("Connection timed out!");
+        res.status(500).json({ error: "Connection timed out" });
+        client.destroy();
     });
 
     client.on("error", (err) => {
         console.error("Socket Error:", err.message);
         res.status(500).json({ error: "Failed to fetch GPS data", details: err.message });
+        client.destroy();
     });
 
     client.on("close", () => {

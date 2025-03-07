@@ -32,21 +32,43 @@
         let trackingInterval, connectionTime = 0;
         let userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
 
+        function convertToDecimal(value, direction) {
+            // Example: 1106.41794 -> 11 degrees, 06.41794 minutes
+            let degrees = parseInt(value.slice(0, -7));  // Get first part as degrees
+            let minutes = parseFloat(value.slice(-7));   // Get remaining as minutes
+            let decimal = degrees + (minutes / 60);
+
+            // Handle South (S) and West (W) coordinates as negative
+            if (direction === "S" || direction === "W") {
+                decimal = -decimal;
+            }
+
+            return decimal;
+        }
+    
         async function fetchGPSData(ip, port) {
             try {
                 const url = `http://localhost:89/fetch-gps?ip=${ip}&port=${port || 11123}`;
                 const response = await fetch(url);
                 const text = await response.text();
+    
+                const gpsParts = text.split(",");
+                if (gpsParts[0] !== "$GPRMC") {
+                    throw new Error("Invalid GPS data format");
+                }
 
+                // Extract latitude & longitude
+                const rawLat = gpsParts[3];
+                const rawLon = gpsParts[5];
+                const latDirection = gpsParts[4];
+                const lonDirection = gpsParts[6];
 
-                const gpsMatch = text.match(/Latitude=([-0-9.]+)\s+Longitude=([-0-9.]+)/);
-                if (!gpsMatch) throw new Error("Invalid GPS data format");
+                // Convert to decimal format
+                const lat = convertToDecimal(rawLat, latDirection);
+                const lon = convertToDecimal(rawLon, lonDirection);
 
-                const lat = parseFloat(gpsMatch[1]);
-                const lon = parseFloat(gpsMatch[2]);
-
-                document.getElementById("lat").innerText = lat;
-                document.getElementById("lon").innerText = lon;
+                document.getElementById("lat").innerText = lat.toFixed(6);
+                document.getElementById("lon").innerText = lon.toFixed(6);
                 
                 // Send data to server
                 const serverResponse = await fetch("http://localhost:89/update-location", {
@@ -59,7 +81,7 @@
                 document.getElementById("distance").innerText = result.distance.toFixed(3);
                 document.getElementById("status").innerText = "Connected";
                 document.getElementById("status").className = "success";
-
+    
             } catch (error) {
                 console.error("GPS Fetch Error:", error);
                 document.getElementById("status").innerText = "Connection Failed";
@@ -67,25 +89,26 @@
                 clearInterval(trackingInterval);
             }
         }
-
+    
         function startTracking() {
             const ip = document.getElementById("phone-ip").value;
             const port = document.getElementById("phone-port").value || "11123";
-
+    
             if (!ip) {
                 alert("Please enter a phone IP");
                 return;
             }
-
+    
             connectionTime = 0;
             document.getElementById("status").innerText = "Connecting...";
             document.getElementById("status").className = "";
-
+    
             trackingInterval = setInterval(() => {
                 fetchGPSData(ip, port);
                 document.getElementById("time-count").innerText = ++connectionTime;
             }, 5000);
         }
     </script>
+    
 </body>
 </html>
