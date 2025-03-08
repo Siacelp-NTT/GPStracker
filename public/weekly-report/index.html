@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Report</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const response = await fetch("/check-auth");
+            const data = await response.json();
+
+            if (!data.authenticated) {
+                window.location.href = "/login"; // Ensure correct redirection
+            } else {
+                fetchWeeklyReport(); // Only fetch report if logged in
+            }
+        });
+    </script>    
+</head>
+<body>
+    <h2>Weekly Report</h2>
+    <p><strong>GPS Updates:</strong> <span id="updates">0</span></p>
+    <p><strong>Total Distance:</strong> <span id="distance">0</span> km</p>
+    <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
+    <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
+    <button onclick="goToDashboard()">Back to Dashboard</button>
+
+    <script>
+        async function fetchWeeklyReport() {
+            try {
+                const response = await fetch("http://localhost:89/api/weekly-report");
+                const data = await response.json();
+
+                if (data.error) {
+                    alert("Error fetching report: " + data.error);
+                    return;
+                }
+
+                if (data.length === 0) {
+                    document.getElementById("updates").innerText = 0;
+                    document.getElementById("distance").innerText = "0.00";
+                    document.getElementById("first-entry").innerText = "N/A";
+                    document.getElementById("last-entry").innerText = "N/A";
+                    return;
+                }
+
+                let totalUpdates = 0;
+                let totalDistance = 0;
+                let firstEntry = data[0].date;
+                let lastEntry = data[data.length - 1].date;
+
+                data.forEach((entry) => {
+                    totalUpdates += entry.updates;
+                    totalDistance += entry.total_distance;
+                });
+
+                document.getElementById("updates").innerText = totalUpdates;
+                document.getElementById("distance").innerText = totalDistance.toFixed(2);
+                document.getElementById("first-entry").innerText = firstEntry;
+                document.getElementById("last-entry").innerText = lastEntry;
+            } catch (error) {
+                console.error("Error fetching weekly report:", error);
+            }
+        }
+
+        fetchWeeklyReport();
+        function goToDashboard() {
+            window.location.href = "/dashboard"; // Make sure this is the correct path
+        }
+    </script>
+</body>
+</html>

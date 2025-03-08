@@ -28,7 +28,7 @@
             const result = await response.json();
             document.getElementById("message").innerText = result.message;
 
-            if (result.message === "Registration successful!") {
+            if (result.message === "Registration successful") {
                 setTimeout(() => {
                     window.location.href = "/login"; // Redirect to login page
                 }, 1000);

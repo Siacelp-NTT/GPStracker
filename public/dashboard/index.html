@@ -10,6 +10,16 @@
         .success { color: green; }
         .error { color: red; }
     </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const response = await fetch("/check-auth");
+            const data = await response.json();
+
+            if (!data.authenticated) {
+                window.location.href = "/login"; // Redirect if not authenticated
+            }
+        });
+    </script>
 </head>
 <body>
     <h2>GPS Tracker Dashboard</h2>
@@ -27,7 +37,7 @@
     <p>Latitude: <span id="lat">-</span></p>
     <p>Longitude: <span id="lon">-</span></p>
     <p>Total Distance: <span id="distance">0</span> km</p>
-
+    <button onclick="goToWeeklyReport()">View Weekly Report</button>
     <script>
         let trackingInterval, connectionTime = 0;
         let userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
@@ -45,6 +55,7 @@
 
             return decimal;
         }
+        
     
         async function fetchGPSData(ip, port) {
             try {
@@ -106,7 +117,23 @@
             trackingInterval = setInterval(() => {
                 fetchGPSData(ip, port);
                 document.getElementById("time-count").innerText = ++connectionTime;
-            }, 5000);
+            }, 1000);
+        }
+        function goToWeeklyReport() {
+            fetch("/check-auth")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        window.location.href = "/weekly-report"; 
+                    } else {
+                        alert("You must be logged in to access the weekly report.");
+                        window.location.href = "/login";  
+                    }
+                })
+                .catch(error => {
+                    console.error("Auth check failed:", error);
+                    alert("Error checking authentication. Please try again.");
+                });
         }
     </script>
     

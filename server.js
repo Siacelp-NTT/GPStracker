@@ -1,5 +1,6 @@
 const sqlite3 = require("sqlite3").verbose();
 const express = require("express");
+const session = require("express-session"); // Import session
 const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
@@ -8,10 +9,18 @@ const http = require("http");
 const app = express();
 const port = 89;
 const net = require("net");
+const SQLiteStore = require("connect-sqlite3")(session);
 
 app.use(express.json());
 app.use(cors());
 app.use(express.static("public"));
+app.use(session({
+    store: new SQLiteStore({ db: "sessions.sqlite" }),
+    secret: "your_secret_key", // Change this to a secure secret
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // Set true if using HTTPS
+}));
 
 const db = new sqlite3.Database("./iot-tracking.db", (err) => {
     if (err) {
@@ -104,7 +113,7 @@ app.post("/update-location", (req, res) => {
     if (!userId || !lat || !lon) {
         return res.status(400).json({ error: "Missing required data" });
     }
-
+    
     db.get(
         `SELECT lat, lon, distance FROM tracking WHERE userId = ? ORDER BY timestamp DESC LIMIT 1`,
         [userId],
@@ -134,6 +143,7 @@ app.post("/update-location", (req, res) => {
     );
 });
 
+
 // Register User (with password hashing)
 app.post("/register", async (req, res) => {
     const username = req.body.username.toLowerCase();
@@ -162,7 +172,7 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
-
+    
     db.get("SELECT * FROM users WHERE username = ?", [username.toLowerCase()], async (err, user) => {
         if (err) {
             console.error("Database error:", err);
@@ -177,7 +187,13 @@ app.post("/login", (req, res) => {
             const match = await bcrypt.compare(password, user.password);
 
             if (match) {
-                return res.status(200).json({ message: "Login successful", userId: user.id });  
+                req.session.userId = user.id; // Store user ID in session
+                console.log("✅ User logged in. Session userId set:", req.session.userId);
+
+                req.session.save((saveErr) => {
+                    if (saveErr) console.error("Session save error:", saveErr);
+                    return res.status(200).json({ message: "Login successful" });
+                }); 
             } else {
                 return res.status(200).json({ error: "Invalid credentials" });  
             }
@@ -189,12 +205,63 @@ app.post("/login", (req, res) => {
     });
 });
 
+app.get("/api/weekly-report", (req, res) => {
+    const userId = req.session.userId;
+
+    if (!req.session.userId) {
+        console.log("🔴 Unauthorized access! Redirecting to login...");
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const query = `
+        SELECT 
+            DATE(timestamp) as date, 
+            COUNT(*) as updates, 
+            COALESCE(SUM(distance), 0) as total_distance
+        FROM tracking 
+        WHERE userId = ? 
+        AND timestamp >= datetime('now', '-7 days')
+        GROUP BY DATE(timestamp)
+        ORDER BY date ASC
+    `;
+
+    db.all(query, [userId], (err, rows) => {
+        if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ error: "Database Error" });
+        }
+
+        const report = rows.length > 0 ? rows : [
+            { date: "N/A", updates: 0, total_distance: 0 }
+        ];
+        res.json(report);
+    });
+});
+
+
 app.get("/", (req, res) => {
     res.redirect("/login");
 });
 
-app.get("/dashboard/:userId", (req, res) => {
+app.get("/check-auth", (req, res) => {
+    console.log("Session UserID:", req.session.userId)
+    console.log("🔍 Checking authentication. Session ID:", req.sessionID);
+    console.log("🔍 Session data:", req.session);
+    if (req.session.userId) {
+        res.json({ authenticated: true, userId: req.session.userId });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+app.get("/dashboard/:userId", (req, res, next) => {
     const userId = req.params.userId;
+
+    if (!req.session.userId) {
+        console.log("🔴 Unauthorized access! Redirecting to login...");
+        return res.redirect("/login"); // Redirect if not logged in
+    }
+    next();
 
     db.get(
         `SELECT lat, lon, distance, timestamp FROM tracking WHERE userId = ? ORDER BY timestamp DESC LIMIT 1`,
