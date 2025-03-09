@@ -19,6 +19,25 @@
                 window.location.href = "/login"; // Redirect if not authenticated
             }
         });
+
+        async function logout() {
+            try {
+                const response = await fetch("/logout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const result = await response.json();
+                if (result.message === "Logout successful") {
+                    localStorage.removeItem("userId"); // Clear user ID from local storage
+                    window.location.href = "/login"; // Redirect to login page
+                } else {
+                    alert("Error logging out: " + result.error);
+                }
+            } catch (error) {
+                console.error("Logout error:", error);
+                alert("Error logging out.");
+            }
+        }
     </script>
 </head>
 <body>
@@ -29,6 +48,7 @@
     <label>Port (Optional):</label>
     <input type="text" id="phone-port" placeholder="Default: 11123">
     <button onclick="startTracking()">Connect</button>
+    <button onclick="logout()">Logout</button>
 
     <p id="status">Status: Not Connected</p>
     <p>Connection Time: <span id="time-count">0</span> seconds</p>
@@ -55,14 +75,13 @@
 
             return decimal;
         }
-        
-    
+
         async function fetchGPSData(ip, port) {
             try {
-                const url = `http://localhost:89/fetch-gps?ip=${ip}&port=${port || 11123}`;
+                const url = `http://192.168.1.20:89/fetch-gps?ip=${ip}&port=${port || 11123}`;
                 const response = await fetch(url);
                 const text = await response.text();
-    
+
                 const gpsParts = text.split(",");
                 if (gpsParts[0] !== "$GPRMC") {
                     throw new Error("Invalid GPS data format");
@@ -80,19 +99,19 @@
 
                 document.getElementById("lat").innerText = lat.toFixed(6);
                 document.getElementById("lon").innerText = lon.toFixed(6);
-                
+
                 // Send data to server
-                const serverResponse = await fetch("http://localhost:89/update-location", {
+                const serverResponse = await fetch("http://192.168.1.20:89/update-location", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ userId, lat, lon })
                 });
                 const result = await serverResponse.json();
-                
+
                 document.getElementById("distance").innerText = result.distance.toFixed(3);
                 document.getElementById("status").innerText = "Connected";
                 document.getElementById("status").className = "success";
-    
+
             } catch (error) {
                 console.error("GPS Fetch Error:", error);
                 document.getElementById("status").innerText = "Connection Failed";
@@ -100,25 +119,26 @@
                 clearInterval(trackingInterval);
             }
         }
-    
+
         function startTracking() {
             const ip = document.getElementById("phone-ip").value;
             const port = document.getElementById("phone-port").value || "11123";
-    
+
             if (!ip) {
                 alert("Please enter a phone IP");
                 return;
             }
-    
+
             connectionTime = 0;
             document.getElementById("status").innerText = "Connecting...";
             document.getElementById("status").className = "";
-    
+
             trackingInterval = setInterval(() => {
                 fetchGPSData(ip, port);
                 document.getElementById("time-count").innerText = ++connectionTime;
             }, 1000);
         }
+
         function goToWeeklyReport() {
             fetch("/check-auth")
                 .then(response => response.json())
@@ -136,6 +156,5 @@
                 });
         }
     </script>
-    
 </body>
 </html>

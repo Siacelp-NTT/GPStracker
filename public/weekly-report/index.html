@@ -15,20 +15,10 @@
                 fetchWeeklyReport(); // Only fetch report if logged in
             }
         });
-    </script>    
-</head>
-<body>
-    <h2>Weekly Report</h2>
-    <p><strong>GPS Updates:</strong> <span id="updates">0</span></p>
-    <p><strong>Total Distance:</strong> <span id="distance">0</span> km</p>
-    <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
-    <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
-    <button onclick="goToDashboard()">Back to Dashboard</button>
 
-    <script>
         async function fetchWeeklyReport() {
             try {
-                const response = await fetch("http://localhost:89/api/weekly-report");
+                const response = await fetch("/api/weekly-report");
                 const data = await response.json();
 
                 if (data.error) {
@@ -63,10 +53,17 @@
             }
         }
 
-        fetchWeeklyReport();
         function goToDashboard() {
             window.location.href = "/dashboard"; // Make sure this is the correct path
         }
-    </script>
+    </script>    
+</head>
+<body>
+    <h2>Weekly Report</h2>
+    <p><strong>GPS Updates:</strong> <span id="updates">0</span></p>
+    <p><strong>Total Distance:</strong> <span id="distance">0</span> km</p>
+    <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
+    <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
+    <button onclick="goToDashboard()">Back to Dashboard</button>
 </body>
 </html>

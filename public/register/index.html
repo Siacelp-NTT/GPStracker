@@ -19,7 +19,7 @@
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const response = await fetch("http://localhost:89/register", {
+            const response = await fetch("http://192.168.1.20:89/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })

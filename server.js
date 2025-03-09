@@ -1,6 +1,6 @@
 const sqlite3 = require("sqlite3").verbose();
 const express = require("express");
-const session = require("express-session"); // Import session
+const session = require("express-session");
 const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
@@ -14,12 +14,15 @@ const SQLiteStore = require("connect-sqlite3")(session);
 app.use(express.json());
 app.use(cors());
 app.use(express.static("public"));
+
+const sessionStore = new SQLiteStore({ db: "sessions.sqlite" });
+
 app.use(session({
-    store: new SQLiteStore({ db: "sessions.sqlite" }),
+    store: sessionStore,
     secret: "your_secret_key", // Change this to a secure secret
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // Set true if using HTTPS
+    cookie: { secure: false, maxAge: 30 * 60 * 1000 } // Set session expiration to 30 minutes
 }));
 
 const db = new sqlite3.Database("./iot-tracking.db", (err) => {
@@ -27,6 +30,15 @@ const db = new sqlite3.Database("./iot-tracking.db", (err) => {
         console.error("❌ Database connection error:", err.message);
     } else {
         console.log("✅ Connected to SQLite database.");
+    }
+});
+
+// Clear session data on server restart
+sessionStore.clear((err) => {
+    if (err) {
+        console.error("❌ Error clearing session data:", err.message);
+    } else {
+        console.log("✅ Session data cleared on server restart.");
     }
 });
 
@@ -62,6 +74,9 @@ db.run(`CREATE TABLE IF NOT EXISTS tracking (
     timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(userId) REFERENCES users(id)
 )`);
+
+// Add an index on the userId column for better performance
+db.run(`CREATE INDEX IF NOT EXISTS idx_userId ON tracking (userId)`);
 
 app.get("/fetch-gps", (req, res) => {
     const { ip, port } = req.query;
@@ -125,7 +140,11 @@ app.post("/update-location", (req, res) => {
 
             let newDistance = 0;
             if (lastLocation) {
-                newDistance = lastLocation.distance + haversine(lastLocation.lat, lastLocation.lon, lat, lon);
+                const distance = haversine(lastLocation.lat, lastLocation.lon, lat, lon);
+                console.log(`Previous Location: (${lastLocation.lat}, ${lastLocation.lon})`);
+                console.log(`Current Location: (${lat}, ${lon})`);
+                console.log(`Calculated Distance: ${distance} km`);
+                newDistance = lastLocation.distance + distance;
             }
 
             db.run(
@@ -142,7 +161,6 @@ app.post("/update-location", (req, res) => {
         }
     );
 });
-
 
 // Register User (with password hashing)
 app.post("/register", async (req, res) => {
@@ -192,7 +210,7 @@ app.post("/login", (req, res) => {
 
                 req.session.save((saveErr) => {
                     if (saveErr) console.error("Session save error:", saveErr);
-                    return res.status(200).json({ message: "Login successful" });
+                    return res.status(200).json({ message: "Login successful", userId: user.id });
                 }); 
             } else {
                 return res.status(200).json({ error: "Invalid credentials" });  
@@ -202,6 +220,15 @@ app.post("/login", (req, res) => {
             console.error("Bcrypt error:", compareError);
             return res.status(200).json({ error: "Internal Server Error" });  
         }
+    });
+});
+
+app.post("/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: "Failed to log out" });
+        }
+        res.json({ message: "Logout successful" });
     });
 });
 
@@ -237,7 +264,6 @@ app.get("/api/weekly-report", (req, res) => {
         res.json(report);
     });
 });
-
 
 app.get("/", (req, res) => {
     res.redirect("/login");
@@ -281,6 +307,6 @@ app.get("/dashboard/:userId", (req, res, next) => {
     );
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${port}`);
 });
