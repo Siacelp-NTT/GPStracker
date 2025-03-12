@@ -30,18 +30,18 @@ app.use(session({
 
 const db = new sqlite3.Database("./iot-tracking.db", (err) => {
     if (err) {
-        console.error("❌ Database connection error:", err.message);
+        console.error("Database connection error:", err.message);
     } else {
-        console.log("✅ Connected to SQLite database.");
+        console.log("Connected to SQLite database.");
     }
 });
 
 // Clear session data on server restart
 sessionStore.clear((err) => {
     if (err) {
-        console.error("❌ Error clearing session data:", err.message);
+        console.error("Error clearing session data:", err.message);
     } else {
-        console.log("✅ Session data cleared on server restart.");
+        console.log("Session data cleared on server restart.");
     }
 });
 
@@ -50,7 +50,7 @@ function haversine(lat1, lon1, lat2, lon2) {
     const toRad = (deg) => (deg * Math.PI) / 180;
 
     const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lat2 - lon1);
+    const dLon = toRad(lon2 - lon1);
     const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
@@ -131,7 +131,7 @@ app.post("/update-location", (req, res) => {
     if (!userId || !lat || !lon) {
         return res.status(400).json({ error: "Missing required data" });
     }
-    
+
     db.get(
         `SELECT lat, lon, distance FROM tracking WHERE userId = ? ORDER BY timestamp DESC LIMIT 1`,
         [userId],
@@ -143,11 +143,12 @@ app.post("/update-location", (req, res) => {
 
             let newDistance = 0;
             if (lastLocation) {
-                const distance = haversine(lastLocation.lat, lastLocation.lon, lat, lon);
-                console.log(`Previous Location: (${lastLocation.lat}, ${lastLocation.lon})`);
+                const distance = haversine(parseFloat(lastLocation.lat), parseFloat(lastLocation.lon), parseFloat(lat), parseFloat(lon));
+                newDistance = lastLocation.distance + distance;
+                console.log(`Last Location: (${lastLocation.lat}, ${lastLocation.lon})`);
                 console.log(`Current Location: (${lat}, ${lon})`);
                 console.log(`Calculated Distance: ${distance} km`);
-                newDistance = lastLocation.distance + distance;
+                console.log(`Total Distance: ${newDistance} km`);
             }
 
             db.run(
@@ -209,7 +210,7 @@ app.post("/login", (req, res) => {
 
             if (match) {
                 req.session.userId = user.id; // Store user ID in session
-                console.log("✅ User logged in. Session userId set:", req.session.userId);
+                console.log("User logged in. Session userId set:", req.session.userId);
 
                 req.session.save((saveErr) => {
                     if (saveErr) console.error("Session save error:", saveErr);
@@ -239,20 +240,17 @@ app.get("/api/weekly-report", (req, res) => {
     const userId = req.session.userId;
 
     if (!req.session.userId) {
-        console.log("🔴 Unauthorized access! Redirecting to login...");
+        console.log("Unauthorized access! Redirecting to login...");
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     const query = `
         SELECT 
-            DATE(timestamp) as date, 
-            COUNT(*) as updates, 
-            COALESCE(SUM(distance), 0) as total_distance
+            lat, lon, timestamp
         FROM tracking 
         WHERE userId = ? 
         AND timestamp >= datetime('now', '-7 days')
-        GROUP BY DATE(timestamp)
-        ORDER BY date ASC
+        ORDER BY timestamp ASC
     `;
 
     db.all(query, [userId], (err, rows) => {
@@ -261,10 +259,19 @@ app.get("/api/weekly-report", (req, res) => {
             return res.status(500).json({ error: "Database Error" });
         }
 
-        const report = rows.length > 0 ? rows : [
-            { date: "N/A", updates: 0, total_distance: 0 }
-        ];
-        res.json(report);
+        if (rows.length === 0) {
+            return res.json({ total_distance: 0, updates: 0, first_entry: "N/A", last_entry: "N/A" });
+        }
+
+        let totalDistance = 0;
+        for (let i = 1; i < rows.length; i++) {
+            totalDistance += haversine(rows[i - 1].lat, rows[i - 1].lon, rows[i].lat, rows[i].lon);
+        }
+
+        const firstEntry = rows[0].timestamp;
+        const lastEntry = rows[rows.length - 1].timestamp;
+
+        res.json({ total_distance: totalDistance, updates: rows.length, first_entry: firstEntry, last_entry: lastEntry });
     });
 });
 
@@ -274,8 +281,8 @@ app.get("/", (req, res) => {
 
 app.get("/check-auth", (req, res) => {
     console.log("Session UserID:", req.session.userId)
-    console.log("🔍 Checking authentication. Session ID:", req.sessionID);
-    console.log("🔍 Session data:", req.session);
+    console.log("Checking authentication. Session ID:", req.sessionID);
+    console.log("Session data:", req.session);
     if (req.session.userId) {
         res.json({ authenticated: true, userId: req.session.userId });
     } else {
@@ -287,7 +294,7 @@ app.get("/dashboard/:userId", (req, res, next) => {
     const userId = req.params.userId;
 
     if (!req.session.userId) {
-        console.log("🔴 Unauthorized access! Redirecting to login...");
+        console.log("Unauthorized access! Redirecting to login...");
         return res.redirect("/login"); // Redirect if not logged in
     }
     next();

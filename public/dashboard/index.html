@@ -125,9 +125,16 @@
         }
 
         function convertToDecimal(value, direction) {
-            // Example: 1106.41794 -> 11 degrees, 06.41794 minutes
-            let degrees = parseInt(value.slice(0, -7));  // Get first part as degrees
-            let minutes = parseFloat(value.slice(-7));   // Get remaining as minutes
+            let degrees, minutes;
+            if (value.length > 10) {
+                // Longitude (DDDMM.MMMM)
+                degrees = parseInt(value.slice(0, 3));  // Get first three digits as degrees
+                minutes = parseFloat(value.slice(3));   // Get remaining as minutes
+            } else {
+                // Latitude (DDMM.MMMM)
+                degrees = parseInt(value.slice(0, 2));  // Get first two digits as degrees
+                minutes = parseFloat(value.slice(2));   // Get remaining as minutes
+            }
             let decimal = degrees + (minutes / 60);
 
             // Handle South (S) and West (W) coordinates as negative

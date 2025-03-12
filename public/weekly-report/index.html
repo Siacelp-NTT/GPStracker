@@ -10,9 +10,9 @@
             const data = await response.json();
 
             if (!data.authenticated) {
-                window.location.href = "/login"; // Ensure correct redirection
+                window.location.href = "/login";
             } else {
-                fetchWeeklyReport(); // Only fetch report if logged in
+                fetchWeeklyReport();
             }
         });
 
@@ -26,42 +26,31 @@
                     return;
                 }
 
-                if (data.length === 0) {
-                    document.getElementById("updates").innerText = 0;
-                    document.getElementById("distance").innerText = "0.00";
+                if (data.updates === 0) {
+                    document.getElementById("updates").innerText = "N/A";
+                    document.getElementById("distance").innerText = "N/A";
                     document.getElementById("first-entry").innerText = "N/A";
                     document.getElementById("last-entry").innerText = "N/A";
-                    return;
+                } else {
+                    document.getElementById("updates").innerText = data.updates;
+                    document.getElementById("distance").innerText = data.total_distance.toFixed(2);
+                    document.getElementById("first-entry").innerText = data.first_entry;
+                    document.getElementById("last-entry").innerText = data.last_entry;
                 }
-
-                let totalUpdates = 0;
-                let totalDistance = 0;
-                let firstEntry = data[0].date;
-                let lastEntry = data[data.length - 1].date;
-
-                data.forEach((entry) => {
-                    totalUpdates += entry.updates;
-                    totalDistance += entry.total_distance;
-                });
-
-                document.getElementById("updates").innerText = totalUpdates;
-                document.getElementById("distance").innerText = totalDistance.toFixed(2);
-                document.getElementById("first-entry").innerText = firstEntry;
-                document.getElementById("last-entry").innerText = lastEntry;
             } catch (error) {
                 console.error("Error fetching weekly report:", error);
             }
         }
 
         function goToDashboard() {
-            window.location.href = "/dashboard"; // Make sure this is the correct path
+            window.location.href = "/dashboard";
         }
     </script>    
 </head>
 <body>
     <h2>Weekly Report</h2>
-    <p><strong>GPS Updates:</strong> <span id="updates">0</span></p>
-    <p><strong>Total Distance:</strong> <span id="distance">0</span> km</p>
+    <p><strong>GPS Updates:</strong> <span id="updates">N/A</span></p>
+    <p><strong>Total Distance:</strong> <span id="distance">N/A</span> km</p>
     <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
     <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
     <button onclick="goToDashboard()">Back to Dashboard</button>
