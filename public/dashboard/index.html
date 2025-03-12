@@ -38,49 +38,15 @@
                 alert("Error logging out.");
             }
         }
-    </script>
-</head>
-<body>
-    <h2>GPS Tracker Dashboard</h2>
-
-    <label>Phone IP:</label>
-    <input type="text" id="phone-ip" placeholder="Enter phone IP">
-    <label>Port (Optional):</label>
-    <input type="text" id="phone-port" placeholder="Default: 11123">
-    <button onclick="startTracking()">Connect</button>
-    <button onclick="logout()">Logout</button>
-
-    <p id="status">Status: Not Connected</p>
-    <p>Connection Time: <span id="time-count">0</span> seconds</p>
-
-    <h3>GPS Data</h3>
-    <p>Latitude: <span id="lat">-</span></p>
-    <p>Longitude: <span id="lon">-</span></p>
-    <p>Total Distance: <span id="distance">0</span> km</p>
-    <button onclick="goToWeeklyReport()">View Weekly Report</button>
-    <script>
-        let trackingInterval, connectionTime = 0;
-        let userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
-
-        function convertToDecimal(value, direction) {
-            // Example: 1106.41794 -> 11 degrees, 06.41794 minutes
-            let degrees = parseInt(value.slice(0, -7));  // Get first part as degrees
-            let minutes = parseFloat(value.slice(-7));   // Get remaining as minutes
-            let decimal = degrees + (minutes / 60);
-
-            // Handle South (S) and West (W) coordinates as negative
-            if (direction === "S" || direction === "W") {
-                decimal = -decimal;
-            }
-
-            return decimal;
-        }
 
         async function fetchGPSData(ip, port) {
             try {
-                const url = `http://192.168.1.20:89/fetch-gps?ip=${ip}&port=${port || 11123}`;
+                const userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
+                console.log(`Fetching GPS data from ${ip}:${port}`);
+                const url = `http://localhost:3000/?ip=${ip}&port=${port || 11123}`;
                 const response = await fetch(url);
                 const text = await response.text();
+                console.log("Received GPS data:", text);
 
                 const gpsParts = text.split(",");
                 if (gpsParts[0] !== "$GPRMC") {
@@ -101,12 +67,14 @@
                 document.getElementById("lon").innerText = lon.toFixed(6);
 
                 // Send data to server
-                const serverResponse = await fetch("http://192.168.1.20:89/update-location", {
+                console.log(`Sending location data to server: userId=${userId}, lat=${lat}, lon=${lon}`);
+                const serverResponse = await fetch(`http://${window.location.hostname}:89/update-location`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ userId, lat, lon })
                 });
                 const result = await serverResponse.json();
+                console.log("Server response:", result);
 
                 document.getElementById("distance").innerText = result.distance.toFixed(3);
                 document.getElementById("status").innerText = "Connected";
@@ -155,6 +123,39 @@
                     alert("Error checking authentication. Please try again.");
                 });
         }
+
+        function convertToDecimal(value, direction) {
+            // Example: 1106.41794 -> 11 degrees, 06.41794 minutes
+            let degrees = parseInt(value.slice(0, -7));  // Get first part as degrees
+            let minutes = parseFloat(value.slice(-7));   // Get remaining as minutes
+            let decimal = degrees + (minutes / 60);
+
+            // Handle South (S) and West (W) coordinates as negative
+            if (direction === "S" || direction === "W") {
+                decimal = -decimal;
+            }
+
+            return decimal;
+        }
     </script>
+</head>
+<body>
+    <h2>GPS Tracker Dashboard</h2>
+
+    <label>Phone IP:</label>
+    <input type="text" id="phone-ip" placeholder="Enter phone IP">
+    <label>Port (Optional):</label>
+    <input type="text" id="phone-port" placeholder="Default: 11123">
+    <button onclick="startTracking()">Connect</button>
+    <button onclick="logout()">Logout</button>
+
+    <p id="status">Status: Not Connected</p>
+    <p>Connection Time: <span id="time-count">0</span> seconds</p>
+
+    <h3>GPS Data</h3>
+    <p>Latitude: <span id="lat">-</span></p>
+    <p>Longitude: <span id="lon">-</span></p>
+    <p>Total Distance: <span id="distance">0</span> km</p>
+    <button onclick="goToWeeklyReport()">View Weekly Report</button>
 </body>
 </html>

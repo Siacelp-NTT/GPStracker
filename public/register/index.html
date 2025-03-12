@@ -13,25 +13,32 @@
     <p id="message"></p>
     <p>Already have an account? <a href="/login">Login here</a></p>
 
-    
     <script>
         async function register() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const response = await fetch("http://192.168.1.20:89/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
+            console.log("Registering user:", username);
 
-            const result = await response.json();
-            document.getElementById("message").innerText = result.message;
+            try {
+                const response = await fetch("/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
 
-            if (result.message === "Registration successful") {
-                setTimeout(() => {
-                    window.location.href = "/login"; // Redirect to login page
-                }, 1000);
+                const result = await response.json();
+                console.log("Registration response:", result);
+                document.getElementById("message").innerText = result.message;
+
+                if (result.message === "Registration successful") {
+                    setTimeout(() => {
+                        window.location.href = "/login"; // Redirect to login page
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error("Registration error:", error);
+                document.getElementById("message").innerText = "Error registering.";
             }
         }
     </script>

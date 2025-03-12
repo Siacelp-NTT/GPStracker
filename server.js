@@ -5,9 +5,12 @@ const path = require("path");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const http = require("http");
+const dotenv = require("dotenv");
+
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
-const port = 89;
+const port = process.env.SERVER_PORT || 89;
 const net = require("net");
 const SQLiteStore = require("connect-sqlite3")(session);
 
@@ -47,7 +50,7 @@ function haversine(lat1, lon1, lat2, lon2) {
     const toRad = (deg) => (deg * Math.PI) / 180;
 
     const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
+    const dLon = toRad(lat2 - lon1);
     const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
