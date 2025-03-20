@@ -11,6 +11,9 @@
         .error { color: red; }
     </style>
     <script>
+        let trackingInterval;
+        let connectionTime = 0;
+
         document.addEventListener("DOMContentLoaded", async function () {
             const response = await fetch("/check-auth");
             const data = await response.json();
@@ -107,6 +110,29 @@
             }, 1000);
         }
 
+        function disconnect() {
+            clearInterval(trackingInterval);
+            document.getElementById("status").innerText = "Disconnected";
+            document.getElementById("status").className = "error";
+        }
+
+        async function fetchDistanceInLast() {
+            const userId = localStorage.getItem("userId") || 1; // Default to user 1 if not found
+            const minutes = document.getElementById("minutes").value;
+            const hours = document.getElementById("hours").value;
+
+            if (!minutes && !hours) {
+                alert("Please enter a value for minutes or hours");
+                return;
+            }
+
+            const url = `http://${window.location.hostname}:89/distance-in-last?userId=${userId}&minutes=${minutes}&hours=${hours}`;
+            const response = await fetch(url);
+            const result = await response.json();
+
+            document.getElementById("distance-in-last").innerText = result.distance.toFixed(2);
+        }
+
         function goToWeeklyReport() {
             fetch("/check-auth")
                 .then(response => response.json())
@@ -154,6 +180,7 @@
     <label>Port (Optional):</label>
     <input type="text" id="phone-port" placeholder="Default: 11123">
     <button onclick="startTracking()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
     <button onclick="logout()">Logout</button>
 
     <p id="status">Status: Not Connected</p>
@@ -163,6 +190,15 @@
     <p>Latitude: <span id="lat">-</span></p>
     <p>Longitude: <span id="lon">-</span></p>
     <p>Total Distance: <span id="distance">0</span> km</p>
+
+    <h3>Distance in Last N Minutes/R Hours</h3>
+    <label>Minutes:</label>
+    <input type="number" id="minutes" placeholder="Enter minutes">
+    <label>Hours:</label>
+    <input type="number" id="hours" placeholder="Enter hours">
+    <button onclick="fetchDistanceInLast()">Get Distance</button>
+    <p>Distance in Last Period: <span id="distance-in-last">0</span> km</p>
+
     <button onclick="goToWeeklyReport()">View Weekly Report</button>
 </body>
 </html>

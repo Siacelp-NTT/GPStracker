@@ -290,6 +290,47 @@ app.get("/check-auth", (req, res) => {
     }
 });
 
+app.get("/distance-in-last", (req, res) => {
+    const { userId, minutes, hours } = req.query;
+
+    if (!userId || (!minutes && !hours)) {
+        return res.status(400).json({ error: "Missing required data" });
+    }
+
+    let timeInterval = "";
+    if (minutes) {
+        timeInterval = `-${minutes} minutes`;
+    } else if (hours) {
+        timeInterval = `-${hours} hours`;
+    }
+
+    const query = `
+        SELECT lat, lon, timestamp
+        FROM tracking
+        WHERE userId = ?
+        AND timestamp >= datetime('now', ?)
+        ORDER BY timestamp ASC
+    `;
+
+    db.all(query, [userId, timeInterval], (err, rows) => {
+        if (err) {
+            console.error("DB Error:", err);
+            return res.status(500).json({ error: "Database Error" });
+        }
+
+        if (rows.length === 0) {
+            return res.json({ distance: 0 });
+        }
+
+        let distance = 0;
+        for (let i = 1; i < rows.length; i++) {
+            distance += haversine(rows[i - 1].lat, rows[i - 1].lon, rows[i].lat, rows[i].lon);
+        }
+
+        res.json({ distance: distance });
+    });
+});
+
 app.get("/dashboard/:userId", (req, res, next) => {
     const userId = req.params.userId;
 
