@@ -1,0 +1,93 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f2f2f2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  /* Container for login box */
+  .container {
+    background-color: #fff;
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Title & subtitle */
+  .container h2 {
+    margin-bottom: 10px;
+    font-size: 24px;
+    color: #202124;
+  }
+  
+  .container p {
+    margin-bottom: 20px;
+    color: #5f6368;
+    font-size: 14px;
+  }
+  
+  /* Input fields */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  input:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+  }
+  
+  /* Login button */
+  button {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a73e8;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: #1669c1;
+  }
+  
+  /* Links */
+  a {
+    color: #1a73e8;
+    font-size: 14px;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  
+  /* Responsive for small screens */
+  @media (max-width: 500px) {
+    .container {
+      margin: 0 20px;
+      padding: 30px 20px;
+    }
+  }
+  

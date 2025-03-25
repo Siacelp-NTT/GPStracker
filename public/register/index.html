@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register</title>
+  <link rel="stylesheet" href="register.css" />
+  
 </head>
 <body>
+  <div class="container">
     <h2>Register</h2>
-    <input type="text" id="username" placeholder="Enter username">
-    <input type="password" id="password" placeholder="Enter password">
-    <button onclick="register()">Register</button>
-    <p id="message"></p>
-    <p>Already have an account? <a href="/login">Login here</a></p>
+    <p>Create a new account</p>
 
+    <form action="/register" method="POST">
+      <input type="text" name="username" placeholder="Enter username" required />
+      <input type="password" name="password" placeholder="Enter password" required />
+      <button type="submit">Register</button>
+    </form>
+
+    <p style="margin-top: 10px;">
+      Already have an account? <a href="../login/index.html">Login here</a>
+    </p>
+  </div>
+</body>
+</html>
     <script>
         async function register() {
             const username = document.getElementById("username").value;
