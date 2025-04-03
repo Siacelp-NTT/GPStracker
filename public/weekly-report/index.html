@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weekly Report</title>
+    <link rel="stylesheet" href="index.css">
     <script>
         document.addEventListener("DOMContentLoaded", async function () {
             const response = await fetch("/check-auth");
@@ -48,11 +49,13 @@
     </script>    
 </head>
 <body>
-    <h2>Weekly Report</h2>
-    <p><strong>GPS Updates:</strong> <span id="updates">N/A</span></p>
-    <p><strong>Total Distance:</strong> <span id="distance">N/A</span> km</p>
-    <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
-    <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
-    <button onclick="goToDashboard()">Back to Dashboard</button>
+    <div class="container">
+        <h2>Weekly Report</h2>
+        <p><strong>GPS Updates:</strong> <span id="updates">N/A</span></p>
+        <p><strong>Total Distance:</strong> <span id="distance">N/A</span> km</p>
+        <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
+        <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
+        <button onclick="goToDashboard()">Back to Dashboard</button>
+    </div>
 </body>
 </html>

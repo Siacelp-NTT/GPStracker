@@ -4,12 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPS Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #status { margin-top: 10px; font-weight: bold; }
-        .success { color: green; }
-        .error { color: red; }
-    </style>
+    <link rel="stylesheet" href="index.css">
     <script>
         let trackingInterval;
         let connectionTime = 0;
@@ -56,28 +51,23 @@
                     throw new Error("Invalid GPS data format");
                 }
 
-                // Extract latitude & longitude
                 const rawLat = gpsParts[3];
                 const rawLon = gpsParts[5];
                 const latDirection = gpsParts[4];
                 const lonDirection = gpsParts[6];
 
-                // Convert to decimal format
                 const lat = convertToDecimal(rawLat, latDirection);
                 const lon = convertToDecimal(rawLon, lonDirection);
 
                 document.getElementById("lat").innerText = lat.toFixed(6);
                 document.getElementById("lon").innerText = lon.toFixed(6);
 
-                // Send data to server
-                console.log(`Sending location data to server: userId=${userId}, lat=${lat}, lon=${lon}`);
                 const serverResponse = await fetch(`http://${window.location.hostname}:89/update-location`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ userId, lat, lon })
                 });
                 const result = await serverResponse.json();
-                console.log("Server response:", result);
 
                 document.getElementById("distance").innerText = result.distance.toFixed(3);
                 document.getElementById("status").innerText = "Connected";
@@ -153,52 +143,56 @@
         function convertToDecimal(value, direction) {
             let degrees, minutes;
             if (value.length > 10) {
-                // Longitude (DDDMM.MMMM)
-                degrees = parseInt(value.slice(0, 3));  // Get first three digits as degrees
-                minutes = parseFloat(value.slice(3));   // Get remaining as minutes
+                degrees = parseInt(value.slice(0, 3));
+                minutes = parseFloat(value.slice(3));
             } else {
-                // Latitude (DDMM.MMMM)
-                degrees = parseInt(value.slice(0, 2));  // Get first two digits as degrees
-                minutes = parseFloat(value.slice(2));   // Get remaining as minutes
+                degrees = parseInt(value.slice(0, 2));
+                minutes = parseFloat(value.slice(2));
             }
             let decimal = degrees + (minutes / 60);
-
-            // Handle South (S) and West (W) coordinates as negative
             if (direction === "S" || direction === "W") {
                 decimal = -decimal;
             }
-
             return decimal;
         }
     </script>
 </head>
 <body>
-    <h2>GPS Tracker Dashboard</h2>
+    <div class="container">
+        <h2>Dashboard</h2>
 
-    <label>Phone IP:</label>
-    <input type="text" id="phone-ip" placeholder="Enter phone IP">
-    <label>Port (Optional):</label>
-    <input type="text" id="phone-port" placeholder="Default: 11123">
-    <button onclick="startTracking()">Connect</button>
-    <button onclick="disconnect()">Disconnect</button>
-    <button onclick="logout()">Logout</button>
+        <div class="dashboard-grid">
+            <!-- Connection Section -->
+            <div class="dashboard-box">
+                <h3>Connection</h3>
+                <label>Phone IP:</label>
+                <input type="text" id="phone-ip" placeholder="Enter phone IP">
+                <label>Port (Optional):</label>
+                <input type="text" id="phone-port" placeholder="Default: 11123">
+                <button onclick="startTracking()">Connect</button>
+                <button onclick="disconnect()">Disconnect</button>
+                <button onclick="logout()">Logout</button>
+                <p id="status" class="status">Status: Not Connected</p>
+                <p>Connection Time: <span id="time-count">0</span> seconds</p>
+                <h3>GPS Data</h3>
+                <p>Latitude: <span id="lat">-</span></p>
+                <p>Longitude: <span id="lon">-</span></p>
+                <p>Total Distance: <span id="distance">0</span> km</p>
+            </div>
 
-    <p id="status">Status: Not Connected</p>
-    <p>Connection Time: <span id="time-count">0</span> seconds</p>
+            <!-- Distance Tracking Section -->
+            <div class="dashboard-box">
+                <h3>Distance Tracking</h3>
+                <label>Minutes:</label>
+                <input type="number" id="minutes" placeholder="Enter minutes">
+                <label>Hours:</label>
+                <input type="number" id="hours" placeholder="Enter hours">
+                <button onclick="fetchDistanceInLast()">Get Distance</button>
+                <p>Distance in Last Period: <span id="distance-in-last">0</span> km</p>
+            </div>
+        </div>
 
-    <h3>GPS Data</h3>
-    <p>Latitude: <span id="lat">-</span></p>
-    <p>Longitude: <span id="lon">-</span></p>
-    <p>Total Distance: <span id="distance">0</span> km</p>
-
-    <h3>Distance in Last N Minutes/R Hours</h3>
-    <label>Minutes:</label>
-    <input type="number" id="minutes" placeholder="Enter minutes">
-    <label>Hours:</label>
-    <input type="number" id="hours" placeholder="Enter hours">
-    <button onclick="fetchDistanceInLast()">Get Distance</button>
-    <p>Distance in Last Period: <span id="distance-in-last">0</span> km</p>
-
-    <button onclick="goToWeeklyReport()">View Weekly Report</button>
+        <button onclick="goToWeeklyReport()">View Weekly Report</button>
+    </div>
 </body>
 </html>
