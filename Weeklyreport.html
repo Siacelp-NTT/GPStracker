@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Report</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const response = await fetch("/check-auth");
+            const data = await response.json();
+
+            if (!data.authenticated) {
+                window.location.href = "/login";
+            } else {
+                fetchWeeklyReport();
+            }
+        });
+
+        async function fetchWeeklyReport() {
+            try {
+                const response = await fetch("/api/weekly-report");
+                const data = await response.json();
+
+                if (data.error) {
+                    alert("Error fetching report: " + data.error);
+                    return;
+                }
+
+                if (data.updates === 0) {
+                    document.getElementById("updates").innerText = "N/A";
+                    document.getElementById("distance").innerText = "N/A";
+                    document.getElementById("first-entry").innerText = "N/A";
+                    document.getElementById("last-entry").innerText = "N/A";
+                } else {
+                    document.getElementById("updates").innerText = data.updates;
+                    document.getElementById("distance").innerText = data.total_distance.toFixed(2);
+                    document.getElementById("first-entry").innerText = data.first_entry;
+                    document.getElementById("last-entry").innerText = data.last_entry;
+                }
+            } catch (error) {
+                console.error("Error fetching weekly report:", error);
+            }
+        }
+
+        function goToDashboard() {
+            window.location.href = "/dashboard";
+        }
+    </script>    
+</head>
+<body>
+   <div class="report-container">
+    <h2>Weekly Report</h2>
+    <p><strong>GPS Updates:</strong> <span id="updates">N/A</span></p>
+    <p><strong>Total Distance:</strong> <span id="distance">N/A</span> km</p>
+    <p><strong>First Entry:</strong> <span id="first-entry">N/A</span></p>
+    <p><strong>Last Entry:</strong> <span id="last-entry">N/A</span></p>
+    <button onclick="goToDashboard()">Back to Dashboard</button>
+  </div>
+</body>
+</html>
